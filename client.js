@@ -3,9 +3,9 @@
  *
  * 只做一件事：把微信读书的书读好，并且随时能问 AI。
  *
- * 相比「灯下」去掉的：本地文件导入、GitHub 书库、PDF/EPUB 解析、番茄小说、书城广场。
- * 换来的：结构化正文（标题/引文/列表/图片）、流式多轮 AI、微信读书划线、
- * 全书架正文搜索、按书阅读时长、可编辑带标签的笔记。
+ * 只支持微信读书一个来源——不做本地文件导入、GitHub 书库、PDF/EPUB 解析、书城广场。
+ * 省下的精力用在这些地方：结构化正文（标题/引文/列表/图片）、流式多轮 AI、
+ * 微信读书划线、全书架正文搜索、按书阅读时长、可编辑带标签的笔记。
  *
  * 所有颜色都走宿主的 `--dsw-alias-*` 变量，所以深浅色自动跟随。
  */
@@ -1568,8 +1568,8 @@ window.__ModuleLoader__.load({
     /**
      * 把块渲染成元素。
      *
-     * 这是「灯下」最根本的一处修复：它把所有块都当 `<p>`，所以微信读书的书里
-     * 标题、引文、列表全部消失。这里按 `t` 分派，层次回来了。
+     * 按 `t` 分派而不是一律当 `<p>`——否则微信读书的书里标题、引文、列表全部消失，
+     * 层次感会整个丢掉。
      */
     function renderBlocks(blocks, options = {}) {
       const nodes = []
@@ -1694,8 +1694,8 @@ window.__ModuleLoader__.load({
       const { book, onOpen } = props
       const percent = clamp(book?.percent ?? 0, 0, 100)
       const remote = book?.remote ?? null
-      // 这里读的是 `remote.percent` / `remote.readingTime`，与 store 写入的字段名一致。
-      // 灯下读的是 `remote.progress` / `remote.seconds`，两个字段并不存在，所以永远空白。
+      // 这里读的是 `remote.percent` / `remote.readingTime`——必须与 store 写入的字段名
+      // 完全一致，否则「已读多少」永远显示空白。
       const remotePercent = Number(remote?.percent) || 0
       const remoteSeconds = Number(remote?.readingTime) || 0
       return h(
@@ -1773,7 +1773,7 @@ window.__ModuleLoader__.load({
       }, [shelf, filter, sort, query])
 
       // 「继续读」优先选真正读过的那本；都没读过就退到云端进度最高的一本，
-      // 这样 174 本刚同步进来时首页也不是空的（灯下这里会一片空白）。
+      // 这样 174 本刚同步进来时首页也不是空的。
       const resume = useMemo(() => {
         const opened = shelf.filter((book) => (book.lastOpenedAt ?? 0) > 0 && book.finished !== true)
         if (opened.length > 0) {

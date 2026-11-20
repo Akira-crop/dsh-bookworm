@@ -5,7 +5,7 @@
  *   1. `/bookworm/api/*` —— 给插件自己的界面用（同源 fetch）
  *   2. `bookworm_*` 工具 —— 给 Harness 里的 Agent 用
  *
- * 这正是「灯下」缺的那一半：它只往 UI 注入 slot，Agent 完全看不见书架。
+ * 两者走同一份实现，所以界面上能做的事，Agent 那边也一定能做，反之亦然。
  */
 import { createApi, PREFIX } from './lib/api.js'
 import { createHandler } from './lib/http-route.js'
