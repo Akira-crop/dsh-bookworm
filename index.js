@@ -1,9 +1,9 @@
 /**
- * 问书（wenshu）Host 半：把服务层挂到 webServer 上，并把能力登记成 Agent 工具。
+ * 书蠹（bookworm）Host 半：把服务层挂到 webServer 上，并把能力登记成 Agent 工具。
  *
  * 两处出口共用 `createApi()` 返回的同一个 `service` 实例：
- *   1. `/wenshu/api/*` —— 给插件自己的界面用（同源 fetch）
- *   2. `wenshu_*` 工具 —— 给 Harness 里的 Agent 用
+ *   1. `/bookworm/api/*` —— 给插件自己的界面用（同源 fetch）
+ *   2. `bookworm_*` 工具 —— 给 Harness 里的 Agent 用
  *
  * 这正是「灯下」缺的那一半：它只往 UI 注入 slot，Agent 完全看不见书架。
  */
@@ -11,7 +11,7 @@ import { createApi, PREFIX } from './lib/api.js'
 import { createHandler } from './lib/http-route.js'
 import { registerTools } from './lib/tools.js'
 
-export const name = 'wenshu'
+export const name = 'bookworm'
 export const inject = ['webServer', 'tools']
 
 /** 把 Node 的 IncomingMessage 转成 Web Request，交给统一 handler。 */
@@ -68,17 +68,17 @@ export function apply(ctx, config = {}) {
             const response = await handle(request)
             await writeResponse(res, response)
           } catch (error) {
-            ctx.logger?.warn?.('[wenshu] request failed: %s', error?.message ?? error)
+            ctx.logger?.warn?.('[bookworm] request failed: %s', error?.message ?? error)
             if (!res.headersSent) res.statusCode = 500
             res.setHeader('content-type', 'application/json; charset=utf-8')
             res.end(JSON.stringify({ ok: false, code: 'INTERNAL', error: String(error?.message ?? error) }))
           }
         },
       }),
-    'wenshu: http routes',
+    'bookworm: http routes',
   )
 
-  ctx.effect(() => registerTools(ctx, api.service), 'wenshu: agent tools')
+  ctx.effect(() => registerTools(ctx, api.service), 'bookworm: agent tools')
 
-  ctx.logger?.info?.('[wenshu] serving %s/api (data: %s)', PREFIX, api.storageDir)
+  ctx.logger?.info?.('[bookworm] serving %s/api (data: %s)', PREFIX, api.storageDir)
 }

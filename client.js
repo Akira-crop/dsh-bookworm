@@ -1,5 +1,5 @@
 /**
- * 问书（wenshu）界面。
+ * 书蠹（bookworm）界面。
  *
  * 只做一件事：把微信读书的书读好，并且随时能问 AI。
  *
@@ -10,14 +10,14 @@
  * 所有颜色都走宿主的 `--dsw-alias-*` 变量，所以深浅色自动跟随。
  */
 window.__ModuleLoader__.load({
-  id: 'dsh-wenshu',
+  id: 'dsh-bookworm',
   factory(require) {
     const React = require('react')
     const h = React.createElement
     const { useState, useEffect, useRef, useMemo, useCallback } = React
 
-    const NS = 'wenshu'
-    const API = '/wenshu/api'
+    const NS = 'bookworm'
+    const API = '/bookworm/api'
     const FLUSH_MS = 5000
     const SAVE_SETTINGS_DELAY = 600
 
@@ -37,7 +37,7 @@ window.__ModuleLoader__.load({
     /* ── 文案 ─────────────────────────────────────────────────── */
 
     const ZH = {
-      'app.title': '问书',
+      'app.title': '书蠹',
       'app.subtitle': '微信读书 + 随时发问',
       'nav.shelf': '书架',
       'nav.notes': '笔记',
@@ -84,7 +84,7 @@ window.__ModuleLoader__.load({
       'reader.thoughtOn': '针对「{q}」',
       'reader.highlightsFromCache': '来自浏览器缓存，可能不全。配置 API Key 可拿全量划线与想法。',
       'reader.jumpToChapter': '跳到这一章',
-      'reader.jumpMiss': '问书里还没有这本书的目录，取到目录后就能跳了。',
+      'reader.jumpMiss': '书蠹里还没有这本书的目录，取到目录后就能跳了。',
 
       'ai.title': '问 AI',
       'ai.ask': '问 AI',
@@ -136,7 +136,7 @@ window.__ModuleLoader__.load({
       'notes.export': '导出 Markdown',
       'notes.exportBook': '导出本书',
       'notes.quoteOnly': '（只存了引文）',
-      'notes.sourceLocal': '问书笔记',
+      'notes.sourceLocal': '书蠹笔记',
       'notes.sourceCloud': '微信读书',
       'notes.cloudHint': '微信读书云端的划线与想法，共 {n} 本书 · {m} 条笔记',
       'notes.cloudSearch': '搜书名 / 作者',
@@ -152,8 +152,8 @@ window.__ModuleLoader__.load({
       'notes.bmCount': '书签 {n}',
       'notes.offShelf': '不在书架',
       'notes.noToc': '目录待补',
-      'notes.offShelfHint': '这本书在微信读书里有笔记，但还没同步到问书书架，暂时没有正文可跳。回到书架刷新一次就会带下来。',
-      'notes.noTocHint': '书已经在书架里了，打开时问书会自动补上目录，划线位置可以照常定位。',
+      'notes.offShelfHint': '这本书在微信读书里有笔记，但还没同步到书蠹书架，暂时没有正文可跳。回到书架刷新一次就会带下来。',
+      'notes.noTocHint': '书已经在书架里了，打开时书蠹会自动补上目录，划线位置可以照常定位。',
       'notes.cloudEmpty': '这本书还没有划线或想法',
       'notes.cloudExpand': '展开划线与想法',
       'notes.cloudCollapse': '收起',
@@ -173,7 +173,7 @@ window.__ModuleLoader__.load({
       'notes.searchNoHit': '这几本里没有匹配的划线，换个词试试。',
 
       'stats.title': '阅读统计',
-  'stats.pageSub': '问书自己记的时间和微信读书官方数据分开统计，互不干扰',
+  'stats.pageSub': '书蠹自己记的时间和微信读书官方数据分开统计，互不干扰',
       'stats.today': '今天',
       'stats.week': '最近七天',
       'stats.total': '累计',
@@ -185,9 +185,9 @@ window.__ModuleLoader__.load({
       'stats.byBook': '按书统计',
       'stats.noBookData': '还没有按书的阅读记录，打开一本书读几分钟就有。',
       'stats.wereadTotal': '微信读书累计',
-      'stats.wereadTotalHint': '这些时长来自微信读书云端，问书只读取，不回写',
+      'stats.wereadTotalHint': '这些时长来自微信读书云端，书蠹只读取，不回写',
       'stats.cloudTitle': '微信读书官方统计',
-      'stats.cloudSub': '来自你的微信读书账号 · 问书只读取，不回写',
+      'stats.cloudSub': '来自你的微信读书账号 · 书蠹只读取，不回写',
       'stats.period': '统计周期',
       'stats.weekly': '本周',
       'stats.monthly': '本月',
@@ -215,7 +215,7 @@ window.__ModuleLoader__.load({
 
       'settings.title': '设置',
       'settings.weread': '微信读书',
-      'settings.wereadDesc': '扫码登录，或在下面粘贴 Cookie。问书只读取你的书架、进度和划线，不回写。',
+      'settings.wereadDesc': '扫码登录，或在下面粘贴 Cookie。书蠹只读取你的书架、进度和划线，不回写。',
       'settings.apiKey': '官方 API Key（划线与想法）',
       'settings.apiKeyDesc': '微信读书官方 Skill 的 Key（wrk- 开头）。配置后能读到完整的划线、想法和笔记本，浏览器 Cookie 方式拿不到这些。',
       'settings.apiKeyLink': '去领取 Key',
@@ -288,12 +288,12 @@ window.__ModuleLoader__.load({
       'common.minute': '分钟',
       'common.hour': '小时',
       'common.day': '天',
-      'boot.failed': '问书没能启动',
+      'boot.failed': '书蠹没能启动',
       'boot.hint': '把下面这段贴给我。',
     }
 
     const EN = {
-      'app.title': 'Wenshu',
+      'app.title': 'Bookworm',
       'app.subtitle': 'WeRead, with a tutor on call',
       'nav.shelf': 'Shelf',
       'nav.notes': 'Notes',
@@ -340,7 +340,7 @@ window.__ModuleLoader__.load({
       'reader.thoughtOn': 'On "{q}"',
       'reader.highlightsFromCache': 'From browser cache — may be incomplete. Set an API Key for full highlights and thoughts.',
       'reader.jumpToChapter': 'Jump to this chapter',
-      'reader.jumpMiss': 'Wenshu has no table of contents for this book yet; it can jump once the TOC is available.',
+      'reader.jumpMiss': 'Bookworm has no table of contents for this book yet; it can jump once the TOC is available.',
 
       'ai.title': 'Ask AI',
       'ai.ask': 'Ask AI',
@@ -392,7 +392,7 @@ window.__ModuleLoader__.load({
       'notes.export': 'Export Markdown',
       'notes.exportBook': 'Export this book',
       'notes.quoteOnly': '(quote only)',
-      'notes.sourceLocal': 'Wenshu notes',
+      'notes.sourceLocal': 'Bookworm notes',
       'notes.sourceCloud': 'WeRead cloud',
       'notes.cloudHint': 'Your WeRead highlights & thoughts across {n} books · {m} notes',
       'notes.cloudSearch': 'Search title / author',
@@ -408,8 +408,8 @@ window.__ModuleLoader__.load({
       'notes.bmCount': '{n} bookmarks',
       'notes.offShelf': 'Not on shelf',
       'notes.noToc': 'TOC pending',
-      'notes.offShelfHint': 'This book has notes in WeRead but is not on the Wenshu shelf yet, so there is no text to jump to. Refresh the shelf once to pull it in.',
-      'notes.noTocHint': 'The book is on your shelf; Wenshu will fetch its table of contents when you open it, and the highlight position still resolves.',
+      'notes.offShelfHint': 'This book has notes in WeRead but is not on the Bookworm shelf yet, so there is no text to jump to. Refresh the shelf once to pull it in.',
+      'notes.noTocHint': 'The book is on your shelf; Bookworm will fetch its table of contents when you open it, and the highlight position still resolves.',
       'notes.cloudEmpty': 'No highlights or thoughts in this book yet',
       'notes.cloudExpand': 'Expand highlights & thoughts',
       'notes.cloudCollapse': 'Collapse',
@@ -429,7 +429,7 @@ window.__ModuleLoader__.load({
       'notes.searchNoHit': 'No matching highlights in the books scanned so far. Try another word.',
 
       'stats.title': 'Reading stats',
-  'stats.pageSub': 'Wenshu’s own timing and WeRead’s official figures are kept separate',
+  'stats.pageSub': 'Bookworm’s own timing and WeRead’s official figures are kept separate',
       'stats.today': 'Today',
       'stats.week': 'Last 7 days',
       'stats.total': 'Total',
@@ -441,9 +441,9 @@ window.__ModuleLoader__.load({
       'stats.byBook': 'By book',
       'stats.noBookData': 'No per-book time yet — read a few minutes and it appears.',
       'stats.wereadTotal': 'WeRead total',
-      'stats.wereadTotalHint': 'Read from WeRead’s cloud; Wenshu never writes back',
+      'stats.wereadTotalHint': 'Read from WeRead’s cloud; Bookworm never writes back',
       'stats.cloudTitle': 'WeRead official stats',
-      'stats.cloudSub': 'From your WeRead account · Wenshu only reads, never writes back',
+      'stats.cloudSub': 'From your WeRead account · Bookworm only reads, never writes back',
       'stats.period': 'Period',
       'stats.weekly': 'This week',
       'stats.monthly': 'This month',
@@ -471,9 +471,9 @@ window.__ModuleLoader__.load({
 
       'settings.title': 'Settings',
       'settings.weread': 'WeRead',
-      'settings.wereadDesc': 'Sign in by QR or paste a cookie. Wenshu reads your shelf, progress and highlights only.',
+      'settings.wereadDesc': 'Sign in by QR or paste a cookie. Bookworm reads your shelf, progress and highlights only.',
       'settings.apiKey': 'Official API Key (highlights & thoughts)',
-      'settings.apiKeyDesc': 'WeRead official Skill key (starts with wrk-). With it, Wenshu reads your full highlights, thoughts and notebooks — browser cookies cannot provide these.',
+      'settings.apiKeyDesc': 'WeRead official Skill key (starts with wrk-). With it, Bookworm reads your full highlights, thoughts and notebooks — browser cookies cannot provide these.',
       'settings.apiKeyLink': 'Get a key',
       'settings.apiKeyPlaceholder': 'wrk-…',
       'settings.apiKeySave': 'Save key',
@@ -544,7 +544,7 @@ window.__ModuleLoader__.load({
       'common.minute': 'min',
       'common.hour': 'h',
       'common.day': 'days',
-      'boot.failed': 'Wenshu failed to start',
+      'boot.failed': 'Bookworm failed to start',
       'boot.hint': 'Paste the trace below.',
     }
 
@@ -785,7 +785,7 @@ window.__ModuleLoader__.load({
   font-variant-numeric: tabular-nums;
   min-height: 1.2em;
 }
-/* 「云端读了多久 + 问书自己又读了多少」——后者是增量，弱化显示 */
+/* 「云端读了多久 + 书蠹自己又读了多少」——后者是增量，弱化显示 */
 .ws-card-meta-tag { color: var(--ws-ink-faint); }
 /* 书架底部汇总行：跟卡片元信息长得像，但需要自己的字号和留白 */
 .ws-shelf-summary {
@@ -1668,7 +1668,7 @@ window.__ModuleLoader__.load({
       const { book, onOpen } = props
       const percent = clamp(book?.percent ?? 0, 0, 100)
       /* 云端 readingTime 才是「这本书在微信读书里读了多久」的真实数字；
-         readSeconds 只是问书自己这次读的，通常为 0，单独显示会让人以为没读过。 */
+         readSeconds 只是书蠹自己这次读的，通常为 0，单独显示会让人以为没读过。 */
       const cloudSeconds = Number(book?.remote?.readingTime) || 0
       const localSeconds = Number(book?.readSeconds) || 0
       return h(
@@ -1713,7 +1713,7 @@ window.__ModuleLoader__.load({
             { className: 'ws-continue-meta' },
             percent > 0 ? `${percent}%` : '还没开始',
             remoteSeconds > 0 ? `微信读书 ${fmtDuration(remoteSeconds)}` : '',
-            (book?.readSeconds ?? 0) > 0 ? `问书 ${fmtDuration(book.readSeconds)}` : '',
+            (book?.readSeconds ?? 0) > 0 ? `书蠹 ${fmtDuration(book.readSeconds)}` : '',
           ),
         ),
         h(
@@ -3247,7 +3247,7 @@ window.__ModuleLoader__.load({
               onClick: async () => {
                 try {
                   const data = await get(`/export/notes`)
-                  await download(`问书-笔记.md`, data.markdown ?? '')
+                  await download(`书蠹-笔记.md`, data.markdown ?? '')
                 } catch {
                   undefined
                 }
@@ -3284,7 +3284,7 @@ window.__ModuleLoader__.load({
                         onClick: async () => {
                           try {
                             const data = await get(`/export/notes?bookId=${encodeURIComponent(group.bookId)}`)
-                            await download(`问书-${group.bookTitle}.md`, data.markdown ?? '')
+                            await download(`书蠹-${group.bookTitle}.md`, data.markdown ?? '')
                           } catch {
                             undefined
                           }
@@ -3627,7 +3627,7 @@ window.__ModuleLoader__.load({
                               (book.bookmarkCount ?? 0) > 0
                                 ? h('span', {}, t('notes.bmCount').replace('{n}', String(book.bookmarkCount ?? 0)))
                                 : null,
-                              /* 跳不动只有一种原因：这本书还没同步到问书书架。
+                              /* 跳不动只有一种原因：这本书还没同步到书蠹书架。
                                  在书架但没目录的，reader 打开时会自己补，标个提示就好。 */
                               String(book.localId ?? '') === ''
                                 ? h('span', { className: 'ws-cloud-off', title: t('notes.offShelfHint') }, t('notes.offShelf'))
@@ -4440,7 +4440,7 @@ window.__ModuleLoader__.load({
                 onClick: async () => {
                   try {
                     const data = await get('/export/shelf')
-                    await download('问书-书架.md', data.markdown ?? '')
+                    await download('书蠹-书架.md', data.markdown ?? '')
                   } catch {
                     undefined
                   }
@@ -4455,7 +4455,7 @@ window.__ModuleLoader__.load({
                 onClick: async () => {
                   try {
                     const data = await get('/export/notes')
-                    await download('问书-笔记.md', data.markdown ?? '')
+                    await download('书蠹-笔记.md', data.markdown ?? '')
                   } catch {
                     undefined
                   }
@@ -4678,12 +4678,12 @@ window.__ModuleLoader__.load({
      * 用 data 属性认领自己那一片，热重载时先清掉旧的再写新的，避免叠加。
      */
     function injectStyles() {
-      const ID = 'wenshu-styles'
-      const previous = document.querySelectorAll(`style[data-wenshu="${ID}"]`)
+      const ID = 'bookworm-styles'
+      const previous = document.querySelectorAll(`style[data-bookworm="${ID}"]`)
       for (const node of previous) node.remove()
 
       const style = document.createElement('style')
-      style.setAttribute('data-wenshu', ID)
+      style.setAttribute('data-bookworm', ID)
       style.textContent = CSS
       document.head.appendChild(style)
 
@@ -4886,9 +4886,9 @@ window.__ModuleLoader__.load({
     return {
       inject: ['slots', 'locale'],
       apply(ctx) {
-        ctx.effect(() => ctx.locale.register(NS, 'zh', ZH), 'wenshu: zh dictionary')
-        ctx.effect(() => ctx.locale.register(NS, 'en', EN), 'wenshu: en dictionary')
-        ctx.effect(() => injectStyles(), 'wenshu: styles')
+        ctx.effect(() => ctx.locale.register(NS, 'zh', ZH), 'bookworm: zh dictionary')
+        ctx.effect(() => ctx.locale.register(NS, 'en', EN), 'bookworm: en dictionary')
+        ctx.effect(() => injectStyles(), 'bookworm: styles')
 
         const t = ctx.locale.bind(NS)
         let Page = null
@@ -4918,12 +4918,12 @@ window.__ModuleLoader__.load({
 
         ctx.slots.inject('sidebar.panellist', () =>
           ctx.slots.register(
-            { name: 'sidebar.panellist', id: 'wenshu', order: 31, label: () => t('app.title'), locale: NS },
+            { name: 'sidebar.panellist', id: 'bookworm', order: 31, label: () => t('app.title'), locale: NS },
             PanelIcon,
           ),
         )
         ctx.slots.inject('main', () =>
-          ctx.slots.register({ name: 'main', key: 'wenshu', locale: NS }, Guarded),
+          ctx.slots.register({ name: 'main', key: 'bookworm', locale: NS }, Guarded),
         )
       },
     }

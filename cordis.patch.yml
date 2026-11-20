@@ -1,4 +1,4 @@
 - insert:
-    - id: wenshu
-      name: 'dsh-wenshu'
+    - id: bookworm
+      name: 'dsh-bookworm'
       config: {}

@@ -1,7 +1,7 @@
 {
-  "name": "dsh-wenshu",
+  "name": "dsh-bookworm",
   "version": "0.1.0",
-  "description": "问书 Wenshu —— 微信读书的沉浸式阅读器，划词即可与 AI 多轮对话，并把书里的划线、笔记和阅读时长留在本地。",
+  "description": "书蠹 Bookworm —— 微信读书的沉浸式阅读器，划词即可与 AI 多轮对话，并把书里的划线、笔记和阅读时长留在本地。",
   "license": "MIT",
   "keywords": [
     "dsh-plugin",
