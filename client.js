@@ -19,6 +19,12 @@ window.__ModuleLoader__.load({
     const NS = 'bookworm'
     const API = '/bookworm/api'
     const FLUSH_MS = 5000
+    /* 回写节奏。本地进度每 FLUSH_MS 记一次是为了界面跟手，
+       发给微信读书则攒到一分钟一次——rt 是累加字段，攒着发不丢精度，
+       而 5 秒一次意味着一小时 720 个请求，会被当成异常流量。
+       REPORT_MAX_SECONDS 是服务端单次上限，超出的部分留在缓冲里下一轮再发。 */
+    const REPORT_EVERY_SECONDS = 60
+    const REPORT_MAX_SECONDS = 300
     const SAVE_SETTINGS_DELAY = 600
 
     const DEFAULT_SETTINGS = {
@@ -2035,6 +2041,28 @@ window.__ModuleLoader__.load({
         snapshotRef.current = { chapterIndex, percent: settings.mode === 'paged' ? (pages > 1 ? page / (pages - 1) : 0) : scrollPercent }
       }, [chapterIndex, pages, page, scrollPercent, settings.mode])
 
+      /* 回写的缓冲：本地仍旧 5 秒一次（界面上的进度要跟手），远端攒够一分钟才发。
+         每 5 秒发一次等于一小时 720 个请求，微读那边会当成异常流量；
+         而 rt 字段本来就按「这段时间读了多少秒」累加，攒着发不损失精度。 */
+      const pendingReportRef = useRef({ seconds: 0, chapterIndex: 0, percent: 0 })
+      const flushReport = useCallback(() => {
+        const pending = pendingReportRef.current
+        if (pending.seconds < 1) return
+        // 服务端单次最多收 300 秒，多出来的留在缓冲里下一轮再发，不丢。
+        const batch = Math.min(REPORT_MAX_SECONDS, pending.seconds)
+        pendingReportRef.current = {
+          seconds: pending.seconds - batch,
+          chapterIndex: pending.chapterIndex,
+          percent: pending.percent,
+        }
+        void post('/progress/report', {
+          bookId,
+          chapterIndex: pending.chapterIndex,
+          percent: pending.percent,
+          seconds: batch,
+        }).catch(() => undefined)
+      }, [bookId])
+
       useEffect(() => {
         const timer = setInterval(() => {
           const now = Date.now()
@@ -2059,19 +2087,22 @@ window.__ModuleLoader__.load({
             percent: snapshot.percent,
             seconds: spent,
           }).catch(() => undefined)
-          // 同一份增量再报给微信读书：时长和进度是同一个端点，服务端自己按 rt 累加。
+          // 同一份增量攒进缓冲，够一分钟再报给微信读书。
           // 失败不打断阅读，也不弹错——回写是锦上添花，不是读下去的前提。
           if (spent >= 1) {
-            void post('/progress/report', {
-              bookId,
-              chapterIndex: snapshot.chapterIndex,
-              percent: snapshot.percent,
-              seconds: spent,
-            }).catch(() => undefined)
+            const pending = pendingReportRef.current
+            pending.seconds += spent
+            pending.chapterIndex = snapshot.chapterIndex
+            pending.percent = snapshot.percent
+            if (pending.seconds >= REPORT_EVERY_SECONDS) flushReport()
           }
         }, FLUSH_MS)
-        return () => clearInterval(timer)
-      }, [bookId])
+        return () => {
+          clearInterval(timer)
+          // 读了几十秒就合上书的情况不该白读：离开时把剩下的补齐。
+          flushReport()
+        }
+      }, [bookId, flushReport])
 
       /* 分页测量 */
       const recompute = useCallback(() => {
