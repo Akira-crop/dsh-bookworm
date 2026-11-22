@@ -32,6 +32,7 @@ window.__ModuleLoader__.load({
       chromeAutoHide: true,
       dailyGoalSeconds: 1800,
       askMode: 'explain',
+      reportProgress: true,
     }
 
     /* ── 文案 ─────────────────────────────────────────────────── */
@@ -254,6 +255,10 @@ window.__ModuleLoader__.load({
       'settings.goal': '每日目标',
       'settings.goalUnit': '分钟',
       'settings.askMode': '划词默认动作',
+      'settings.reportProgress': '把阅读时长和进度回写到微信读书',
+      'settings.reportProgressHint': '在书蠹里读的时间会算进微信读书的阅读记录。只往前写，不会把你已经读得更远的位置改回去。',
+      'settings.refreshOk': '这次登录拿到了刷新令牌，过期会自动续期，不用天天重扫。',
+      'settings.refreshMissing': '这次登录没拿到刷新令牌（wr_rt），会话大约一天后失效。重新扫一次码就能补上，之后就长期有效。',
       'settings.data': '数据',
       'settings.exportShelf': '导出书架',
       'settings.exportNotes': '导出全部笔记',
@@ -510,6 +515,10 @@ window.__ModuleLoader__.load({
       'settings.goal': 'Daily goal',
       'settings.goalUnit': 'min',
       'settings.askMode': 'Default select action',
+      'settings.reportProgress': 'Write reading time and progress back to WeRead',
+      'settings.reportProgressHint': 'Time you read here counts toward your WeRead record. It only moves forward — it will never push you back to a spot you have already read past.',
+      'settings.refreshOk': 'This login got a refresh token, so the session renews itself. No daily re-scan.',
+      'settings.refreshMissing': 'This login has no refresh token (wr_rt), so the session expires in about a day. Scan once more to fix it for good.',
       'settings.data': 'Data',
       'settings.exportShelf': 'Export shelf',
       'settings.exportNotes': 'Export all notes',
@@ -1504,6 +1513,7 @@ window.__ModuleLoader__.load({
       if (typeof input.chromeAutoHide === 'boolean') next.chromeAutoHide = input.chromeAutoHide
       if (Number.isFinite(input.dailyGoalSeconds)) next.dailyGoalSeconds = clamp(input.dailyGoalSeconds, 300, 14400)
       if (['explain', 'expand'].includes(input.askMode)) next.askMode = input.askMode
+      if (typeof input.reportProgress === 'boolean') next.reportProgress = input.reportProgress
       return next
     }
 
@@ -2028,6 +2038,16 @@ window.__ModuleLoader__.load({
       useEffect(() => {
         const timer = setInterval(() => {
           const now = Date.now()
+          // 切到别的标签页、最小化、或者锁屏时不该继续累计：否则把网页挂着过夜，
+          // 第二天「已读 8 小时」。document.hidden 覆盖前两者，hasFocus 覆盖最后一种
+          // 常见情形（浏览器在后台时计时器本身也会被节流，两个都要看）。
+          const away = document.hidden === true || document.hasFocus?.() === false
+          if (away) {
+            // 把基准点推到现在，回来时不会把离开的那段一次性补记。
+            tickRef.current = now
+            lastFlushRef.current = now
+            return
+          }
           const spent = Math.min(600, Math.round((now - tickRef.current) / 1000))
           if (spent < 1 && now - lastFlushRef.current < FLUSH_MS) return
           const snapshot = snapshotRef.current
@@ -2039,6 +2059,16 @@ window.__ModuleLoader__.load({
             percent: snapshot.percent,
             seconds: spent,
           }).catch(() => undefined)
+          // 同一份增量再报给微信读书：时长和进度是同一个端点，服务端自己按 rt 累加。
+          // 失败不打断阅读，也不弹错——回写是锦上添花，不是读下去的前提。
+          if (spent >= 1) {
+            void post('/progress/report', {
+              bookId,
+              chapterIndex: snapshot.chapterIndex,
+              percent: snapshot.percent,
+              seconds: spent,
+            }).catch(() => undefined)
+          }
         }, FLUSH_MS)
         return () => clearInterval(timer)
       }, [bookId])
@@ -4422,6 +4452,33 @@ window.__ModuleLoader__.load({
                   t(`ai.${key}`),
                 ),
               ),
+            ),
+          ),
+          /* 回写微信读书：默认开，因为读者在书蠹里读的书本来就该算进自己的记录。
+             留着开关是因为这是会写远端的操作，谁都不想在不知情的时候改别人的数据。 */
+          h(
+            'div',
+            { className: 'ws-field' },
+            h(
+              'label',
+              { className: 'ws-row', style: { cursor: 'pointer', alignItems: 'flex-start' } },
+              h('input', {
+                type: 'checkbox',
+                style: { marginTop: 3 },
+                checked: settings.reportProgress !== false,
+                onChange: (event) => onSettings({ ...settings, reportProgress: event.target.checked }),
+              }),
+              h(
+                'span',
+                { style: { fontSize: 13, lineHeight: 1.6 } },
+                t('settings.reportProgress'),
+                h('span', { className: 'ws-hint', style: { display: 'block', marginTop: 2 } }, t('settings.reportProgressHint')),
+              ),
+            ),
+            h(
+              'div',
+              { className: 'ws-hint', style: { marginTop: 6 } },
+              status?.hasRefreshToken === true ? t('settings.refreshOk') : t('settings.refreshMissing'),
             ),
           ),
         ),
