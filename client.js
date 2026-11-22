@@ -89,6 +89,14 @@ window.__ModuleLoader__.load({
       'reader.chapter': '第 {i}/{n} 章',
       'reader.page': '{a}/{b}',
       'reader.highlights': '划线与想法',
+      'reader.thoughts': '书友想法',
+      'thoughts.loading': '正在问微信读书要这一章的想法…',
+      'thoughts.none': '这一章在微信读书里还没人划线和写想法。',
+      'thoughts.noThoughts': '这一章有人划线，但还没人留下想法。',
+      'thoughts.summary': '这一章 {n} 条书友想法，来自 {m} 处被划的句子',
+      'thoughts.markMissing': '（这条划线没有保存原文）',
+      'thoughts.groupMeta': '{n} 人划过这句 · {m} 条想法',
+      'thoughts.mine': '我的',
       'reader.noHighlights': '这本书在微信读书里还没有划线或想法。',
       'reader.thought': '想法',
       'reader.thoughtOn': '针对「{q}」',
@@ -352,6 +360,14 @@ window.__ModuleLoader__.load({
       'reader.chapter': 'Chapter {i}/{n}',
       'reader.page': '{a}/{b}',
       'reader.highlights': 'Highlights & thoughts',
+      'reader.thoughts': "Readers' thoughts",
+      'thoughts.loading': 'Asking WeRead for thoughts on this chapter…',
+      'thoughts.none': 'Nobody has highlighted or commented on this chapter in WeRead yet.',
+      'thoughts.noThoughts': 'People highlighted here, but nobody left a thought yet.',
+      'thoughts.summary': '{n} thoughts from readers, on {m} highlighted passages',
+      'thoughts.markMissing': '(this highlight did not store its text)',
+      'thoughts.groupMeta': '{n} people highlighted this · {m} thoughts',
+      'thoughts.mine': 'Mine',
       'reader.noHighlights': 'No highlights or thoughts in WeRead for this book yet.',
       'reader.thought': 'Thought',
       'reader.thoughtOn': 'On "{q}"',
@@ -1175,6 +1191,20 @@ window.__ModuleLoader__.load({
 .ws-hl-thought { font-size: 13px; line-height: 1.65; color: var(--ws-ink); background: var(--ws-hover); border-radius: 6px; padding: 8px 10px; }
 .ws-hl-kind { font-size: 10px; text-transform: uppercase; letter-spacing: .05em; color: var(--dsw-alias-state-business-primary, var(--ws-accent)); font-weight: 600; }
 .ws-hl-source { font-size: 11px; color: var(--ws-ink-faint); padding: 0 2px 10px; }
+/* 书友想法：一句话被多少人划、下面几条想法。
+   和上面的「我的划线」分开配色——别人的东西不该看起来像我自己的。 */
+.ws-th-summary { font-size: 12px; line-height: 1.6; color: var(--ws-ink-soft); padding: 0 2px 12px; }
+.ws-th-group { padding: 0 0 14px; }
+.ws-th-group + .ws-th-group { border-top: 1px solid var(--ws-line-soft); padding-top: 14px; }
+.ws-th-mark { font-size: 13px; line-height: 1.7; color: var(--ws-ink-soft); border-left: 2px solid var(--ws-ink-faint); padding-left: 9px; margin-bottom: 6px; }
+.ws-th-mark-empty { font-style: italic; color: var(--ws-ink-faint); }
+.ws-th-meta { font-size: 11px; color: var(--ws-ink-faint); padding: 0 0 8px 11px; }
+.ws-th-item { background: var(--ws-hover); border-radius: 7px; padding: 8px 11px; margin-bottom: 7px; }
+.ws-th-item[data-mine="true"] { border-left: 2px solid var(--ws-accent); }
+.ws-th-head { display: flex; align-items: center; gap: 6px; margin-bottom: 3px; }
+.ws-th-author { font-size: 11.5px; font-weight: 600; color: var(--ws-ink-soft); }
+.ws-th-mine { font-size: 10px; padding: 1px 6px; border-radius: 999px; color: var(--ws-accent); border: 1px solid var(--ws-accent); }
+.ws-th-text { font-size: 13px; line-height: 1.7; color: var(--ws-ink); white-space: pre-wrap; }
 /* 章节小标题可点：从划线直接回到正文那一章 */
 .ws-hl-jump {
   display: inline-flex; align-items: center; gap: 5px;
@@ -2047,6 +2077,9 @@ function currentLabel(t, models) {
       const [scope, setScope] = useState('selection')
       const abortRef = useRef(null)
       const [highlights, setHighlights] = useState(null)
+      /* 书友想法：这一章别人划了哪儿、说了什么。
+         和「我的笔记」是两件事——一个是我留下的，一个是别人留下的。 */
+      const [thoughts, setThoughts] = useState(null)
       const [fontOpen, setFontOpen] = useState(false)
       /* 目录还没取到时，划线跳正文点了没反应会让人莫名其妙——给一句明确的话。 */
       const [jumpMissed, setJumpMissed] = useState(false)
@@ -2603,6 +2636,28 @@ function currentLabel(t, models) {
           ),
           h(
             'button',
+            {
+              className: 'ws-btn',
+              'data-kind': 'ghost',
+              title: t('reader.thoughts'),
+              onClick: async () => {
+                setDrawer('thoughts')
+                /* 想法按章加载：换一章要重新拉，所以不能像划线那样「拿过一次就永远复用」。 */
+                if (thoughts !== null && thoughts.chapterIndex === chapterIndex) return
+                setThoughts({ loading: true, chapterIndex, groups: [], thoughtCount: 0 })
+                try {
+                  const data = await get(`/thoughts?bookId=${encodeURIComponent(bookId)}&chapterIndex=${chapterIndex}`)
+                  setThoughts({ loading: false, chapterIndex, ...data })
+                } catch (failure) {
+                  setThoughts({ loading: false, chapterIndex, groups: [], thoughtCount: 0, error: failure.message })
+                }
+              },
+            },
+            t('reader.thoughts'),
+            thoughts !== null && thoughts.thoughtCount > 0 ? h('span', { className: 'ws-badge' }, String(thoughts.thoughtCount)) : null,
+          ),
+          h(
+            'button',
             { className: 'ws-btn', 'data-kind': 'ghost', title: t('reader.notes'), onClick: () => setDrawer('notes') },
             h(IcoNote),
             notes.length > 0 ? h('span', { className: 'ws-badge' }, String(notes.length)) : null,
@@ -2848,6 +2903,76 @@ function currentLabel(t, models) {
                 },
                 onChanged: reloadNotes,
               }),
+            )
+          : null,
+
+        drawer === 'thoughts'
+          ? h(
+              'div',
+              {},
+              h('div', { className: 'ws-scrim', onClick: () => setDrawer('') }),
+              h(
+                'div',
+                { className: 'ws-drawer' },
+                h(
+                  'div',
+                  { className: 'ws-drawer-head' },
+                  h('div', { className: 'ws-drawer-title' }, t('reader.thoughts')),
+                  h('button', { className: 'ws-btn', 'data-kind': 'ghost', onClick: () => setDrawer('') }, h(IcoClose)),
+                ),
+                h(
+                  'div',
+                  { className: 'ws-drawer-body' },
+                  thoughts === null || thoughts.loading === true
+                    ? h('div', { className: 'ws-hint' }, t('thoughts.loading'))
+                    : thoughts.error !== undefined
+                      ? h('div', { className: 'ws-hint' }, String(thoughts.error))
+                      : thoughts.available === false
+                        ? h('div', { className: 'ws-hint' }, t('thoughts.none'))
+                        : thoughts.thoughtCount === 0
+                          ? h('div', { className: 'ws-hint' }, t('thoughts.noThoughts'))
+                          : h(
+                              'div',
+                              {},
+                              h(
+                                'div',
+                                { className: 'ws-th-summary' },
+                                t('thoughts.summary')
+                                  .replace('{n}', String(thoughts.thoughtCount))
+                                  .replace('{m}', String(thoughts.hotRanges ?? 0)),
+                              ),
+                              ...(thoughts.groups ?? []).map((group, groupIndex) =>
+                                h(
+                                  'div',
+                                  { key: `tg-${groupIndex}`, className: 'ws-th-group' },
+                                  group.markText !== ''
+                                    ? h('div', { className: 'ws-th-mark' }, String(group.markText))
+                                    : h('div', { className: 'ws-th-mark ws-th-mark-empty' }, t('thoughts.markMissing')),
+                                  h(
+                                    'div',
+                                    { className: 'ws-th-meta' },
+                                    t('thoughts.groupMeta')
+                                      .replace('{n}', String(group.bookMarkCount ?? 0))
+                                      .replace('{m}', String(group.totalCount ?? group.thoughts.length)),
+                                  ),
+                                  ...(group.thoughts ?? []).map((thought, index) =>
+                                    h(
+                                      'div',
+                                      { key: `tt-${groupIndex}-${index}`, className: 'ws-th-item', 'data-mine': thought.isMine === true },
+                                      h(
+                                        'div',
+                                        { className: 'ws-th-head' },
+                                        h('span', { className: 'ws-th-author' }, String(thought.author ?? '')),
+                                        thought.isMine ? h('span', { className: 'ws-th-mine' }, t('thoughts.mine')) : null,
+                                      ),
+                                      h('div', { className: 'ws-th-text' }, String(thought.content ?? '')),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                ),
+              ),
             )
           : null,
 
