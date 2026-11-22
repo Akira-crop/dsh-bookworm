@@ -39,6 +39,9 @@ window.__ModuleLoader__.load({
       dailyGoalSeconds: 1800,
       askMode: 'explain',
       reportProgress: true,
+      /* 上次选的模型。空串＝跟随 Harness 默认模型。 */
+      askProvider: '',
+      askModel: '',
     }
 
     /* ── 文案 ─────────────────────────────────────────────────── */
@@ -122,6 +125,9 @@ window.__ModuleLoader__.load({
       'ai.enterHint': 'Enter 发送 · Shift+Enter 换行',
       'ai.turnCount': '第 {n} 轮',
       'ai.expandPanel': '在大页面里继续这段对话',
+      'ai.pickModel': '换个模型来回答',
+      'ai.noModel': '没有可用模型',
+      'ai.modelInUse': '正在用',
 
       'ask.title': '和书聊',
       'ask.sub': '离开正文也能接着问：选一本你在读的书，之前问过的会串起来。',
@@ -382,6 +388,9 @@ window.__ModuleLoader__.load({
       'ai.enterHint': 'Enter to send · Shift+Enter for a new line',
       'ai.turnCount': 'turn {n}',
       'ai.expandPanel': 'Continue this chat on the full page',
+      'ai.pickModel': 'Answer with a different model',
+      'ai.noModel': 'No model available',
+      'ai.modelInUse': 'Using',
 
       'ask.title': 'Talk to a book',
       'ask.sub': 'Keep asking after you leave the page: pick a book you are reading and earlier turns carry over.',
@@ -1033,6 +1042,51 @@ window.__ModuleLoader__.load({
   flex: none; padding: 9px 14px 8px; border-bottom: 1px solid var(--ws-line);
   display: flex; flex-direction: column; gap: 6px; align-items: flex-start;
 }
+/* 模型是谁在答。这一行必须常驻可见——读者要知道这段对话用了哪个模型，
+   而不是猜。position:relative 给下拉做定位基准。
+
+   选择器前面都挂 .ws-root：.ws-root button 的 font:inherit 是 (0,1,1)，
+   单类名 (0,1,0) 拼不过它，字号会被悄悄重置回 14px。 */
+.ws-ai-model { flex: none; position: relative; padding: 8px 14px 0; display: flex; align-items: center; }
+.ws-root .ws-ai-model-btn {
+  display: inline-flex; align-items: center; gap: 6px; max-width: 100%;
+  height: 26px; padding: 0 8px; margin-left: -8px;
+  border: 1px solid transparent; border-radius: 7px; background: transparent;
+  font-family: inherit; font-size: 11.5px; color: var(--ws-ink-soft); cursor: pointer;
+  transition: background 120ms ease, border-color 120ms ease, color 120ms ease;
+}
+.ws-root .ws-ai-model-btn:hover:not(:disabled) { background: var(--ws-hover); color: var(--ws-ink); }
+.ws-root .ws-ai-model-btn[data-open="true"] { background: var(--ws-hover); border-color: var(--ws-line); color: var(--ws-ink); }
+.ws-root .ws-ai-model-btn:disabled { cursor: default; color: var(--ws-ink-faint); }
+.ws-root .ws-ai-model-btn > svg { flex: none; width: 12px; height: 12px; opacity: .7; }
+.ws-ai-model-tag { flex: none; font-size: 10.5px; color: var(--ws-ink-faint); letter-spacing: .02em; }
+.ws-ai-model-name {
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-size: 11.5px; font-variant-numeric: tabular-nums;
+}
+.ws-ai-model-menu {
+  position: absolute; top: calc(100% + 4px); left: 14px; right: 14px; z-index: 30;
+  /* 320px 是「差不多能看全十来个模型」的高度；再高就会在矮窗口里冲出面板底部
+     （实测 1000x480 时菜单底边 404 > 面板底边 382，被裁掉一截）。58vh 兜住这一档。 */
+  max-height: min(320px, 58vh); overflow-y: auto; padding: 6px;
+  border: 1px solid var(--ws-line); border-radius: 10px;
+  background: var(--ws-paper); box-shadow: 0 12px 32px rgb(0 0 0 / 18%);
+}
+.ws-ai-model-group + .ws-ai-model-group { margin-top: 6px; }
+.ws-ai-model-group-title {
+  padding: 4px 8px 3px; font-size: 10.5px; letter-spacing: .04em;
+  text-transform: uppercase; color: var(--ws-ink-faint);
+}
+.ws-root .ws-ai-model-item {
+  display: flex; align-items: center; width: 100%;
+  padding: 6px 8px; border: 0; border-radius: 7px; background: transparent;
+  font-family: inherit; font-size: 12.5px; color: var(--ws-ink); text-align: left; cursor: pointer;
+}
+.ws-root .ws-ai-model-item:hover { background: var(--ws-hover); }
+.ws-root .ws-ai-model-item[data-active="true"] { color: var(--ws-accent); font-weight: 600; }
+.ws-root .ws-ai-model-item[data-active="true"]::after {
+  content: '•'; margin-left: auto; padding-left: 8px; color: var(--ws-accent);
+}
 .ws-ai-empty { font-size: 12.5px; color: var(--ws-ink-faint); line-height: 1.7; padding: 10px 2px; }
 .ws-msg-quote {
   max-width: 92%; padding: 6px 10px; border-radius: 8px; border-left: 2px solid var(--ws-accent);
@@ -1520,6 +1574,13 @@ window.__ModuleLoader__.load({
       if (Number.isFinite(input.dailyGoalSeconds)) next.dailyGoalSeconds = clamp(input.dailyGoalSeconds, 300, 14400)
       if (['explain', 'expand'].includes(input.askMode)) next.askMode = input.askMode
       if (typeof input.reportProgress === 'boolean') next.reportProgress = input.reportProgress
+      if (typeof input.askProvider === 'string' && typeof input.askModel === 'string') {
+        const provider = input.askProvider.trim()
+        const model = input.askModel.trim()
+        const paired = provider !== '' && model !== ''
+        next.askProvider = paired ? provider : ''
+        next.askModel = paired ? model : ''
+      }
       return next
     }
 
@@ -1578,6 +1639,21 @@ window.__ModuleLoader__.load({
     const IcoSend = (props) => icon(['M22 2L11 13', 'M22 2l-7 20-4-9-9-4z'], props)
     const IcoRefresh = (props) => icon(['M23 4v6h-6', 'M1 20v-6h6', 'M3.5 9a9 9 0 0 1 14.9-3.4L23 10', 'M20.5 15a9 9 0 0 1-14.9 3.4L1 14'], props)
     const IcoExternal = (props) => icon(['M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6', 'M15 3h6v6', 'M10 14L21 3'], props)
+const IcoChevron = (props) => icon(['M6 9l6 6 6-6'], props)
+
+/** 模型名太长会把「谁在答」挤成省略号。保留能区分的那一段就好。 */
+function shortModel(pick) {
+  if (pick === null || pick === undefined) return ''
+  const name = String(pick.model ?? '')
+  return name === '' ? String(pick.provider ?? '') : name
+}
+
+/** 还没选过时显示 Harness 的默认模型；连默认都没有就老实说没有。 */
+function currentLabel(t, models) {
+  const current = models?.current
+  if (current === null || current === undefined) return t('ai.noModel')
+  return shortModel(current)
+}
 
     /* ── 文本渲染（保留层级） ─────────────────────────────────── */
 
@@ -1925,6 +2001,43 @@ window.__ModuleLoader__.load({
          原来 state 只有 question/answer 两个字段，关掉面板整段对话就没了。 */
       const [chatOpen, setChatOpen] = useState(false)
       const [chat, setChat] = useState({ sessionId: '', turns: 0, messages: [], history: [], status: 'idle', error: '' })
+      /* 这一段对话用哪个模型。以前模型是隐含继承的：读者既看不见是谁在回答，
+         也没得选。`pick` 为 null 表示「跟 Harness 的默认走」。
+
+         初值取上次存下来的选择：只在组件里记住的话，关掉阅读页再打开就悄悄
+         变回默认模型，读者又会不知道现在在跟谁说话——那正是这个功能要解决的。 */
+      const [pick, setPick] = useState(() => {
+        const provider = String(settings?.askProvider ?? '')
+        const model = String(settings?.askModel ?? '')
+        return provider === '' || model === '' ? null : { provider, model }
+      })
+      const [models, setModels] = useState(null)
+
+      /* 选完就记住。settings 是全局的，阅读页和对话页共用同一个选择。 */
+      const chooseModel = useCallback(
+        (next) => {
+          setPick(next)
+          onSettings?.({ ...settings, askProvider: next.provider, askModel: next.model })
+        },
+        [settings, onSettings],
+      )
+
+      /* 模型清单只在打开阅读器时取一次：它随 Harness 的模型配置变，
+         不是每次提问都要重查的东西。取不到也不阻断阅读，只是选择器不可用。 */
+      useEffect(() => {
+        let alive = true
+        void (async () => {
+          try {
+            const data = await get('/ask/models')
+            if (alive) setModels({ current: data?.current ?? null, providers: Array.isArray(data?.providers) ? data.providers : [] })
+          } catch {
+            // 拿不到清单不影响提问，默认走 Harness 的模型。
+          }
+        })()
+        return () => {
+          alive = false
+        }
+      }, [])
       /* 收尾写笔记时要读「最新的」对话状态。askAi 是 useCallback，
          依赖里不放 messages（否则每帧都换新函数、输入框反复失焦），
          所以用 ref 兜住最新值。 */
@@ -2292,6 +2405,9 @@ window.__ModuleLoader__.load({
                 scope: askScope,
                 sessionId: chat.sessionId === '' ? undefined : chat.sessionId,
                 withToc: true,
+                /* 没选就整个不发，让后端退回 Harness 默认模型；
+                   选了就一定要真的用上，否则「选了 B 得到 A 的回答」比不能选更糟。 */
+                ...(pick === null ? {} : { provider: pick.provider, model: pick.model }),
               },
               {
                 signal: controller.signal,
@@ -2366,7 +2482,7 @@ window.__ModuleLoader__.load({
             abortRef.current = null
           }
         },
-        [bookId, chapterIndex, chapter, meta, toc, scope, chat.sessionId, reloadNotes, onNotesChanged],
+        [bookId, chapterIndex, chapter, meta, toc, scope, chat.sessionId, reloadNotes, onNotesChanged, pick],
       )
 
       /** 停止生成。原来 abort 只是被存进 state，从来没有按钮去调用它，
@@ -2546,6 +2662,9 @@ window.__ModuleLoader__.load({
                 quote: String(chat.pendingQuote ?? ''),
                 onClearQuote: () => setChat((current) => ({ ...current, pendingQuote: '' })),
                 onStop: stopAi,
+                models,
+                pick,
+                onPick: chooseModel,
                 onExpand: onAskPage === undefined ? undefined : () => onAskPage(bookId),
                 onReset: async () => {
                   try {
@@ -2825,6 +2944,12 @@ window.__ModuleLoader__.load({
 
     function AiPanel(props) {
       const { t, state, scope, onScope, onClose, onAsk, onStop, onReset, quote, onClearQuote, onExpand } = props
+      /* 模型选择。`models` 为 null 表示还没取到清单（或宿主没给），
+         这时只显示当前正在用的那个，至少读者知道是谁在答。 */
+      const models = props.models ?? null
+      const pick = props.pick ?? null
+      const onPick = props.onPick
+      const [pickerOpen, setPickerOpen] = useState(false)
       const [draft, setDraft] = useState('')
       const logRef = useRef(null)
       const inputRef = useRef(null)
@@ -2881,6 +3006,53 @@ window.__ModuleLoader__.load({
           onClose === undefined
             ? null
             : h('button', { className: 'ws-btn', 'data-kind': 'ghost', title: t('ai.close'), onClick: onClose }, h(IcoClose)),
+        ),
+        /* 模型是谁。放在最上面一行：读者第一个该知道的就是「这段对话谁在答」。
+           点开能换，换的是这段对话往后都用的模型。 */
+        h(
+          'div',
+          { className: 'ws-ai-model' },
+          h(
+            'button',
+            {
+              className: 'ws-ai-model-btn',
+              'data-open': String(pickerOpen),
+              title: t('ai.pickModel'),
+              onClick: () => setPickerOpen((open) => !open),
+              disabled: models === null || onPick === undefined,
+            },
+            h('span', { className: 'ws-ai-model-tag' }, t('ai.modelInUse')),
+            h('span', { className: 'ws-ai-model-name' }, pick === null ? currentLabel(t, models) : shortModel(pick)),
+            h(IcoChevron),
+          ),
+          pickerOpen && models !== null
+            ? h(
+                'div',
+                { className: 'ws-ai-model-menu' },
+                models.providers.map((provider) =>
+                  h(
+                    'div',
+                    { key: provider.id, className: 'ws-ai-model-group' },
+                    h('div', { className: 'ws-ai-model-group-title' }, provider.name),
+                    provider.models.map((model) =>
+                      h(
+                        'button',
+                        {
+                          key: `${provider.id}/${model.id}`,
+                          className: 'ws-ai-model-item',
+                          'data-active': String(pick !== null && pick.provider === provider.id && pick.model === model.id),
+                          onClick: () => {
+                            onPick?.({ provider: provider.id, model: model.id })
+                            setPickerOpen(false)
+                          },
+                        },
+                        h('span', null, model.name),
+                      ),
+                    ),
+                  ),
+                ),
+              )
+            : null,
         ),
         /* 范围选择：选中 / 本章 / 全书。放在最上头，因为它决定「这个问题能问多大」，
            读者每次提问前都该看见自己现在问的是哪一层。 */
@@ -4569,13 +4741,45 @@ window.__ModuleLoader__.load({
      * 从书架挑一本，把之前在那本书里问过的串起来继续问。
      */
     function AskPage(props) {
-      const { t, shelf, initialBookId, onOpenBook } = props
+      const { t, shelf, initialBookId, onOpenBook, settings, onSettings } = props
       const [bookId, setBookId] = useState(String(initialBookId ?? ''))
       const [scope, setScope] = useState('book')
       const [chat, setChat] = useState({ sessionId: '', turns: 0, messages: [], history: [], status: 'idle', error: '', pendingQuote: '' })
+      /* 跟阅读页共用同一个模型选择：在书里选过哪个，退出来还该是哪个。 */
+      const [pick, setPick] = useState(() => {
+        const provider = String(settings?.askProvider ?? '')
+        const model = String(settings?.askModel ?? '')
+        return provider === '' || model === '' ? null : { provider, model }
+      })
+      const [models, setModels] = useState(null)
       const chatRef = useRef(chat)
       chatRef.current = chat
       const abortRef = useRef(null)
+
+      const chooseModel = useCallback(
+        (next) => {
+          setPick(next)
+          onSettings?.({ ...settings, askProvider: next.provider, askModel: next.model })
+        },
+        [settings, onSettings],
+      )
+
+      /* 这一页也要能选模型：读者从阅读页「展开到对话页」继续问时，
+         换了模型不该被悄悄换回默认。 */
+      useEffect(() => {
+        let alive = true
+        void (async () => {
+          try {
+            const data = await get('/ask/models')
+            if (alive) setModels({ current: data?.current ?? null, providers: Array.isArray(data?.providers) ? data.providers : [] })
+          } catch {
+            // 拿不到清单不影响提问。
+          }
+        })()
+        return () => {
+          alive = false
+        }
+      }, [])
 
       useEffect(() => {
         if (String(initialBookId ?? '') !== '') setBookId(String(initialBookId))
@@ -4611,6 +4815,7 @@ window.__ModuleLoader__.load({
               scope,
               sessionId: chatRef.current.sessionId === '' ? undefined : chatRef.current.sessionId,
               withToc: true,
+              ...(pick === null ? {} : { provider: pick.provider, model: pick.model }),
             },
             {
               signal: controller.signal,
@@ -4706,6 +4911,9 @@ window.__ModuleLoader__.load({
               setChat((state) => ({ ...state, sessionId: '', turns: 0 }))
             },
             onClose: undefined,
+            models,
+            pick,
+            onPick: chooseModel,
             onAsk: (question) => {
               send(question)
               if (String(chatRef.current.pendingQuote ?? '') !== '') setChat((state) => ({ ...state, pendingQuote: '' }))
@@ -4936,6 +5144,8 @@ window.__ModuleLoader__.load({
                       shelf,
                       initialBookId: askBookId,
                       onOpenBook: (book) => void open({ id: book.id }),
+                      settings,
+                      onSettings: applySettings,
                     })
                   : tab === 'stats'
                   ? h(StatsPage, { t, stats: state?.stats ?? null, shelf, settings, onSettings: applySettings })

@@ -30,3 +30,5 @@ desktop.ini
 # 环境变量
 .env
 .env.*
+_commit.txt
+_cmsg.txt
